@@ -1,9 +1,9 @@
-const bcrypt = require('bcryptjs')
-const express = require('express')
+const bcrypt = require('bcryptjs');
+const express = require('express');
 
-const Users = require('./user-modules.js')
-const restricted = require('../data/restricted-middleware.js')
-
+const Users = require('./user-modules.js');
+const restricted = require('../data/restricted-middleware.js');
+const jwtSecret = require('../config/secrets.js');
 
 const router = express.Router();
 
@@ -23,8 +23,6 @@ router.post("/register", (req, res) => {
     user.password = hash
     Users.add(user)
         .then(saved => {
-            req.session.loggedIn = true
-
             res.status(201).json(saved)
         })
         .catch(error => {
@@ -39,10 +37,9 @@ router.post("/login", (req, res) => {
         .first()
         .then(user => {
             if (user && bcrypt.compareSync(password, user.password)){
-                req.session.loggedIn = true
-                req.session.username = user.username;
+               const token =generateToke(user)
 
-                res.status(200).json({ message: `Welcome ${user.username}`});
+                res.status(200).json({ message: `Welcome ${user.username}`, token});
             } else {
                 res.status(401).json({ message: "Invalid Credentials" });
               }
@@ -68,4 +65,16 @@ router.get("/logout", (req, res) => {
     }
 })
 
+
+function generateToke(user){
+    const payload = {
+        subjet: user.id
+    }
+
+    const options ={
+        expiresIn: "1hr",
+    }
+
+    return jwt.sign(payload, jwtSecret, options)
+}
 module.exports = router
